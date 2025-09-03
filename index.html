@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>smithing</title>
+    <style>
+        * {
+            font-family: 'EB Garamond';
+
+
+            font-size: 1.2rem;
+            font-weight: 300;
+
+            background-color: #333333;
+            color: rgb(207, 207, 146);
+        }
+
+
+        .container {
+            padding: 10px;
+        }
+
+        .main {
+            margin-top: 4vh;
+            min-height: 200px;
+            margin-left: 50px;
+            margin-right: 50px;
+        }
+
+        .bordered {
+            border: solid 1px #111111;
+        }
+
+        .med {
+            min-height: 40px;
+            min-width: 100px;
+        }
+
+        .valueText {
+            color: whitesmoke;
+        }
+
+        .images * {
+
+            height: 70px;
+        }
+
+        .hoverbutton:hover {
+            background-color: #464646;
+            transition: 0.05s;
+        }
+
+        .hoverbutton {
+            transition: 0.2s;
+        }
+    </style>
+    <script>
+
+        console.log('Script content')
+        /** 
+         * @typedef {1|2|3|4|5|6|7|8} Stone
+         * 
+         * */
+
+        /** 
+         * @type {{ stoneType: Stone, ranks: [number, number, number]}[]}
+         * 
+         * */
+        const valuesMap = [
+            {
+                stoneType: 1,
+                ranks: [1, 2, 3]
+            },
+            {
+                stoneType: 2,
+                ranks: [4, 5, 6]
+            },
+            {
+                stoneType: 3,
+                ranks: [7, 8, 9]
+            },
+            {
+                stoneType: 4,
+                ranks: [10, 11, 12]
+            },
+            {
+                stoneType: 5,
+                ranks: [13, 14, 15]
+            },
+            {
+                stoneType: 6,
+                ranks: [16, 17, 18]
+            },
+            {
+                stoneType: 7,
+                ranks: [19, 20, 21]
+            }
+        ]
+
+        // Ranks is always a tuple of 3, and they always have the same weight (at least in this range that I currently know)
+        const weightByIndex = [2, 4, 6]
+
+
+
+        const getRequirementsByRank = (curRank, targetRank) => {
+
+            if (curRank < 0 || curRank > 21) {
+                throw new Error('Only supports ranks 0 to 21 (right now)')
+            }
+
+            // hack - compare curRank and targetRank each as a number
+            curRank = Number(curRank)
+            targetRank = Number(targetRank)
+
+            // Find the respective stone given the rank
+            const currStoneType = valuesMap.find(stone => stone.ranks.includes(curRank))?.stoneType
+
+            console.log('currStoneType:', currStoneType)
+            const stoneTypeIndex = curRank === 0 ? 0 : valuesMap.findIndex(stone => stone.ranks.includes(curRank))
+
+            console.log('stoneTypeIndex:', stoneTypeIndex)
+
+            if (curRank !== 0 && stoneTypeIndex < 0) {
+                throw new Error('Could not find current stone ranking in any category.')
+            }
+
+            // Find same for target
+            const targetStoneType = targetRank ? valuesMap.find(stone => stone.ranks.includes(targetRank))?.stoneType : undefined
+            const targetStoneTypeIndex = targetRank ? valuesMap.findIndex(stone => stone.ranks.includes(targetRank)) : undefined
+
+            console.log("weapon is currently rank +" + curRank, '- want to get to rank', targetRank || '21 (no target rank passed)')
+
+            // Work to end and just sum the stones required (if no target rank)
+
+            const weightsByIndex = [2, 4, 6]
+
+            const valuesMapSlice = valuesMap.slice(stoneTypeIndex)
+
+            /** @type {{[stoneType: number]: { [`+{number}`]: number}}}} */
+            const reqs = {
+                totals: {
+
+                }
+            }
+
+
+            let done; // if target rank is reached
+
+            for (const section of valuesMapSlice) {
+                // For any section that the stone is NOT in (i.e. all but its own section),
+                // we can just iterate the values from the start.
+                // For the section it lives in,
+                // we have to start from its position.
+
+                const ranksToCheck = []
+                if (section.stoneType === currStoneType) {
+                    // we must get our starting position in the tuple (as this is really the only one it will vary from 0/the start for)
+                    // The three values of this section:
+                    // const [first, second, third] = section.ranks
+                    const indexOfCurrent = section.ranks.findIndex(val => val === curRank)
+                    console.log('Current rank of', curRank, 'is at index', indexOfCurrent, 'in the tuple for this rank')
+                    // add whichever all are needed from here
+
+                    ranksToCheck.push(...section.ranks.slice(indexOfCurrent + 1)) // exclude the current
+                } else {
+                    ranksToCheck.push(...section.ranks)
+                }
+
+                // Also, for any ranks AFTER the target rank, those need to be cut off from the result set.
+
+                if (ranksToCheck.includes(targetRank)) {
+                    const posOfTargetRank = ranksToCheck.findIndex(el => el === targetRank)
+                    console.log('removing entries in ranksToCheck after the target rank')
+                    ranksToCheck.splice(posOfTargetRank + 1)
+                }
+
+                for (const rank of ranksToCheck) {
+
+                    const indexOfCurrent = section.ranks.findIndex(val => val === rank)
+                    if (!reqs[section.stoneType]) {
+                        reqs[section.stoneType] = {}
+                    }
+                    reqs[section.stoneType][`+${rank}`] = weightByIndex[indexOfCurrent]
+                    if (!reqs.totals[section.stoneType]) {
+                        reqs.totals[section.stoneType] = 0
+                    }
+                    reqs.totals[section.stoneType] += weightByIndex[indexOfCurrent]
+
+                    if (rank === targetRank) {
+                        console.log('Just ran for target rank:', targetRank)
+                        done = true;
+                    }
+                }
+
+                if (done) {
+                    break;
+                }
+            }
+
+            console.log(reqs)
+            return reqs;
+
+
+
+
+        }
+
+
+        // const args = process.argv.slice(2)
+
+        // console.log('Got args:', args)
+
+        function createElementsFor(dataValue) {
+
+
+            const stoneType = dataValue.stoneType
+
+            // hack:
+            dataValue = dataValue.data
+
+            //     "2": {
+            //         "+5": 4,
+            //             "+6": 6
+            //     }
+            const myEntries = Object.entries(dataValue)
+
+            // key
+            // value
+            console.log('myEntries:', JSON.stringify(myEntries))
+            const values = Object.values(dataValue)
+            const entriesOf = Object.entries(dataValue)
+
+            console.log('values:', values)
+            const sum = (function () { let sum = 0; for (const val of values) { sum += val } return sum; })()
+
+            const valString = `(${values.join('+')})`
+
+            // //     <div>+4: <span class="valueText">2</span><div class='images'><img src="./ss2.png"><img src="./ss2.png"></div></div>
+            //         <div>+5: <span class="valueText">4</span></div>
+            //         <div>+6: <span class="valueText">6</span></div>`
+
+            const stoneTypeName = stoneType
+
+            console.log(JSON.stringify({
+                stoneTypeName: stoneTypeName,
+                valString: valString,
+                sum: sum,
+                entriesOf: entriesOf
+            }))
+
+            const imageRows = []
+
+            const isTotals = stoneType === 'totals'
+            entriesOf.forEach(([rank, amount]) => {
+                console.log({
+                    rank,
+                    amount,
+                    stoneTypeName
+                })
+                const stoneTypeStringVal = isTotals ? rank : stoneTypeName
+
+                // display is different for "totals"
+                const rankDisplayVal = isTotals ? `Smithing Stone [${rank}]` : rank
+
+                imageRows.push(`<div>${rankDisplayVal}:&nbsp;&nbsp;<span class="valueText">${amount}</span><div class='images'>${new Array(Number(amount)).fill("").map(imgInstance => `<img src="./ss${stoneTypeStringVal}.png">`).join("")}</div></div>`)
+            })
+
+            // <div class="med bordered">Smithing Stone [2]: <span class="valueText"><span style="font-weight: 'bold'; font-size: 20px; color: gold;">12</span> (2+4+6)</span>
+            //     <div>+4: <span class="valueText">2</span><div class='images'><img src="./ss2.png"><img src="./ss2.png"></div></div>
+            //         <div>+5: <span class="valueText">4</span></div>
+            //         <div>+6: <span class="valueText">6</span></div>
+            //     </div>
+
+            const newEl = document.createElement('div')
+            const initText = isTotals ? 'Total required' : `Smithing Stone [${stoneTypeName}]`
+            if (isTotals) {
+                newEl.style.border = 'solid 2px palegoldenrod'
+                newEl.style.padding = '10px'
+            }
+            newEl.innerHTML = `${initText}: <span class="valueText"><span style="font-weight: 'bold'; font-size: 20px; color: gold;">${sum}</span> ${valString}</span>` + imageRows.join("")
+
+            return newEl;
+
+        }
+
+        function calculate(cur, targ) {
+
+            let errorObj;
+
+
+
+            if (typeof cur === 'undefined' || typeof targ === 'undefined') {
+                errorObj = {
+                    error: "Must provide current and target"
+                }
+            }
+            cur = Number(cur.trim())
+            targ = Number(targ.trim())
+
+
+            if (isNaN(cur || isNaN(targ))) {
+                errorObj = {
+                    error: "Both values must be numbers"
+                }
+            }
+
+            if (cur < 0) {
+                document.getElementById('cur').value = "0"
+                return;
+            }
+            if ((targ > 17)) {
+                errorObj = {
+                    error: "Counter only goes to 18"
+                }
+            }
+            if (cur > targ) {
+                errorObj = {
+                    error: 'Current cannot be greater than target rank'
+                }
+            }
+            if (cur === targ) {
+                errorObj = {
+                    error: "Cannot be same values"
+                }
+            }
+            if (targ === 0) {
+                return;
+            }
+
+
+            if (cur === mostRecents.cur && targ === mostRecents.targ) {
+                console.log('skipping identical input')
+                return;
+            }
+
+
+            mostRecents.cur = cur
+            mostRecents.targ = targ
+
+
+
+
+            // Clear results
+            // <div class="container bordered" id="resultscontainer" style="margin-top: 100px;">
+
+            const containerEl = document.getElementById('resultscontainer')
+
+            const errorEl = document.getElementById("errorelement")
+
+            errorEl.innerHtml = ""
+            containerEl.innerHTML = ""
+
+            if (errorObj) {
+                errorEl.innerHTML = `<span style="color: tomato;">${errorObj.error}</span>`
+                playA()
+                return;
+            }
+
+            console.log('Running calculate with values of:', { current: cur, target: targ })
+            currentResultData = getRequirementsByRank(cur, targ)
+
+            console.log(currentResultData)
+
+            const resultContainerRef = document.getElementById('resultscontainer')
+
+            for (const [index, dataEntry] of Object.entries(currentResultData)) {
+
+                console.log('received result data of:', {
+                    index,
+                    dataEntry
+                })
+
+                const newElementCluster = createElementsFor({ stoneType: index, data: dataEntry })
+                const newLi = document.createElement('li')
+                newLi.style['list-style-type'] = 'none'
+                newLi.style.borderTop = '1px solid #222222'
+                newLi.appendChild(newElementCluster)
+                resultContainerRef.appendChild(newLi)
+                // resultContainer.appendChild(newLi)
+                playC()
+            }
+        }
+
+
+        // Given an example return object like the following:
+
+        // For current rank 4, wanting to get to 5
+
+        // {
+        //     "2": {
+        //         "+5": 4,
+        //             "+6": 6
+        //     },
+        //     "3": {
+        //         "+7": 2,
+        //             "+8": 4,
+        //                 "+9": 6
+        //     },
+        //     "totals": {
+        //         "2": 10,
+        //             "3": 12
+        //     }
+        // }
+
+
+
+        // Add the values to the UI
+
+
+
+
+        // sound
+
+        function playA() {
+            if (globalSoundOn) {
+                console.log('Sound A')
+                let audioPlayerA = document.getElementById('audioPlayerA');
+                audioPlayerA.muted = false;
+                audioPlayerA.load(); // reload the audio player so that the audio restarts from the beginning on each click
+                audioPlayerA.play();
+            }
+        }
+
+        function fieldChanged(field) {
+            const errorEl = document.getElementById("errorelement")
+            errorEl.replaceChildren()
+            console.log('errorEl innerHtml:', errorEl.innerHTML)
+            playB()
+        }
+
+        function playB() {
+            if (globalSoundOn) {
+                console.log('Sound B')
+                let audioPlayerB = document.getElementById('audioPlayerB');
+                audioPlayerB.muted = false;
+                audioPlayerB.load(); // reload the audio player so that the audio restarts from the beginning on each click
+                audioPlayerB.play();
+            }
+        }
+
+
+        function playC() {
+            if (globalSoundOn) {
+                console.log('Sound C')
+                let audioPlayerC = document.getElementById('audioPlayerC');
+                audioPlayerC.muted = false;
+                audioPlayerC.load(); // reload the audio player so that the audio restarts from the beginning on each click
+                audioPlayerC.play();
+            }
+        }
+
+
+        function initialize() {
+            playC()
+            document.getElementById('contentcontainer').hidden = false
+            document.getElementById('startbtn').remove()
+        }
+
+
+        let globalSoundOn = true;
+
+        let mostRecents = {
+            cur: undefined,
+            targ: undefined
+        }
+
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <div id="maincontainer">
+        <h3 style="margin:100px 100px 0px 100px;">Smithing tool</h3>
+        <button style="font-size: 20px; margin-left: 200px; margin-top: 100px;" type="button" id="startbtn" class="med"
+            onclick="initialize()">Start</button>
+        <div class="container main bordered" id="contentcontainer" hidden="true">
+            <form>
+                <div class="container med"><label>current rank: &emsp;+<input onkeydown="playB()"
+                            onchange="fieldChanged()" type='number' id="cur" value="0"></label>
+                </div>
+                <div class="container med"><label>target rank: &ensp;&emsp;+<input onkeydown="playB()"
+                            onchange="fieldChanged()" type='number' id="targ"></label></label></div>
+                <div style="padding: 5px;" id="errorelement"></div>
+            </form>
+            <button class="med hoverbutton"
+                onclick="calculate(document.getElementById('cur').value, document.getElementById('targ').value)"
+                onmouseover="playA()" type="button">Submit</button>
+        </div>
+        <div class="container bordered" id="resultscontainer" class="resultscontainerclass" style="margin-top: 100px;">
+            <!-- <div class="med bordered">Smithing Stone [2]: <span class="valueText"><span
+                        style="font-weight: 'bold'; font-size: 20px; color: gold;">12</span> (2+4+6)</span>
+                <div>+4: <span class="valueText">2</span>
+                    <div class='images'><img src="./ss2.png"><img src="./ss2.png"></div>
+                </div>
+                <div>+5: <span class="valueText">4</span></div>
+                <div>+6: <span class="valueText">6</span></div>
+            </div> -->
+
+        </div>
+    </div>
+
+
+    <div>
+        <audio src="bmf.mp3" id="audioPlayerA" muted="true"></audio>
+        <audio src="chik.mp3" id="audioPlayerB" muted="true"></audio>
+        <audio src="gabeum.mp3" id="audioPlayerC" muted="true"></audio>
+    </div>
+</body>
+
+</html>
